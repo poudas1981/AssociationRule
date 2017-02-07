@@ -5,8 +5,8 @@ DataBase[,"windy"]= factor(DataBase[,"windy"])
 library(sets)
 #s = c("a","d","c")
 #cset_power(s)
-#DataBase = read.csv("C:/Users/Merlin Mpoudeu/SkyDrive/Documents/CSCE_874/Homework/vote.csv", header = T)
-#str(DataBase)
+DataBase = read.csv("C:/Users/Merlin Mpoudeu/SkyDrive/Documents/CSCE_874/Homework/vote.csv", header = T)
+#str(Vote)
 # this function will test if two set are equal
 SETEQUAL = function(A1,A2){
   sum = 0
@@ -212,69 +212,80 @@ Apriori = function(DataBase,Min_con){
       }
     }
   }
-  target = order(ItemList)
-  ItemList = ItemList[target]
-  AttList = AttList[target]
-  Count = Count[target]
-  L1 = vector(mode="list",length=3)
-  L1[[1]] = ItemList
-  L1[[2]] = AttList
-  L1[[3]] = Count
-  
-  Levels2 = list()
-  Att2 = list()
-  c2 = numeric()
-  c = 0
-  for(g in 1:(length(ItemList)-1)){
-    for(r in (g+1):length(ItemList)){
-      if(AttList[g] == AttList[r]){
-        next
-      }else{
-        At = c(AttList[g],AttList[r])
-        Le = c(ItemList[g],ItemList[r])
-        rank = order(Le)
-        At = At[rank]
-        Le = Le[rank]
-        if((FreqCount(DataBase,AttNames=At,
-                     level=Le)/dim(DataBase)[1])>=Min_con & 
+  if(length(ItemList)==0){
+    message("There is no frequent item set for this Minimum support ", Min_con, ".", " Please reduce it")
+  }else{
+    target = order(ItemList)
+    ItemList = ItemList[target]
+    AttList = AttList[target]
+    Count = Count[target]
+    L1 = vector(mode="list",length=3)
+    L1[[1]] = ItemList
+    L1[[2]] = AttList
+    L1[[3]] = Count
+    Levels2 = list()
+    Att2 = list()
+    c2 = numeric()
+    c = 0
+    
+    for(g in 1:(length(ItemList)-1)){
+      for(r in (g+1):length(ItemList)){
+        if(AttList[g] == AttList[r]){
+          next
+        }else{
+          At = c(AttList[g],AttList[r])
+          Le = c(ItemList[g],ItemList[r])
+          rank = order(Le)
+          At = At[rank]
+          Le = Le[rank]
+          if((FreqCount(DataBase,AttNames=At,
+                        level=Le)/dim(DataBase)[1])>=Min_con & 
              length(Le)==2){
-        c = c + 1
-        Levels2[[c]] = Le
-        Att2[[c]] = At
-        c2[c] = FreqCount(DataBase,AttNames=At,
-                          level=Le)
+            c = c + 1
+            Levels2[[c]] = Le
+            Att2[[c]] = At
+            c2[c] = FreqCount(DataBase,AttNames=At,
+                              level=Le)
+          }
         }
       }
     }
+    L2 = list(Levels2,Att2,c2)
+    
+    c = list()
+    ll = list()
+    ll[[1]] = L1
+    ll[[2]] = L2
+    c[[1]] = L1
+    c[[2]] = L2
+    
+    Count = 2
+    Countll = 2
+    # This is L2
+    #c[[Count]] = AprioriGen(DataBase,L1,Min_con)
+    while(length(c[[Count]][[1]])!=0){
+      Freq = AprioriGen(DataBase,c[[Count]],Min_con)
+      Count = Count + 1
+      c[[Count]] = Freq
+      
+      if(length(Freq[[1]])!=0){
+        Countll = Countll + 1
+        ll[[Countll]] = Freq
+      }
+      
+    }
+    ll
+    
   }
-  L2 = list(Levels2,Att2,c2)
+  
+  
+  
+  
   
   # FirstItemSet is the 1-itemset
   # Let's generate Lk
-  c = list()
-  ll = list()
-  ll[[1]] = L1
-  ll[[2]] = L2
-  c[[1]] = L1
-  c[[2]] = L2
+ 
   
-  Count = 2
-  Countll = 2
-  # This is L2
-  #c[[Count]] = AprioriGen(DataBase,L1,Min_con)
-  
-  while(length(c[[Count]][[1]])!=0){
-    Freq = AprioriGen(DataBase,c[[Count]],Min_con)
-    Count = Count + 1
-    c[[Count]] = Freq
-    
-    if(length(Freq[[1]])!=0){
-      Countll = Countll + 1
-      ll[[Countll]] = Freq
-    }
-    
-  }
-  ll
 }
 AprioriAlgorithm = function(DataBase, Min_sup, Min_conf){
 Min_con = Min_sup
@@ -282,12 +293,34 @@ Min_conf = Min_conf
 L= Apriori(DataBase, Min_con)
 RuleSum = 0
 Con = 0
+
 for(k in 1:length(L)){
   gen = L[[k]]
-  for(i in 1:length(gen[[1]])){
+  if(length(gen[[1]])==0){
+    break()
+  }else{
+    for(i in 1:length(gen[[1]])){
     if(length(gen[[2]][[i]])==1){
       message(paste(i,": "),paste("lhs","==>",gen[[2]][[i]], "=",gen[[1]][[i]]),paste(" "),paste("support","=", gen[[3]][[i]]))
       #RuleSum = RuleSum + 1
+      for (l in 1:(length(gen[[1]])-1)) {
+        for (t in (l+1):length(gen[[1]])) {
+          attri = c(gen[[2]][[l]],gen[[2]][[t]])
+          lev = c(gen[[1]][[l]],gen[[1]][[t]])
+          a = FreqCount(DataBase,attri,lev)
+          supp = a/dim(DataBase)[1]
+          conf = a/FreqCount(DataBase,gen[[2]][l],gen[[1]][[l]])
+          if(supp >= Min_con & conf>=Min_conf){
+            message(paste(Con,": ") ,paste(gen[[2]][[l]],"=", paste(" "),gen[[1]][[l]]),paste(" "),paste(" " ," ==> "),
+                    paste(gen[[2]][[t]], "=", gen[[1]][[t]]," support = ", a, "confidence = ", round(conf,2), sep = " "))
+            RuleSum = RuleSum + 1
+            Con = Con + 1
+          }
+          
+        }
+        
+      }
+
     }
     if(length(gen[[2]][[i]])>=2){
       l = 1
@@ -297,7 +330,7 @@ for(k in 1:length(L)){
         conf = a/FreqCount(DataBase,gen[[2]][[i]][-l],gen[[1]][[i]][-l])
         if(supp >= Min_con & conf>=Min_conf){
           message(paste(Con,": ") ,paste(gen[[2]][[i]][-l],"=", paste(" "),gen[[1]][[i]][-l]),paste(" "),paste(" " ," ==> "),
-                         paste(gen[[2]][[i]][l], "=", gen[[1]][[i]][l]," support = ", supp, "confidence = ", round(conf,2), sep = " "))
+                         paste(gen[[2]][[i]][l], "=", gen[[1]][[i]][l]," support = ", a, "confidence = ", round(conf,2), sep = " "))
           RuleSum = RuleSum + 1
           Con = Con + 1
       }
@@ -305,11 +338,15 @@ for(k in 1:length(L)){
       }
     }
   
+    }
+  }
 }
-}
-message("The Number of Association Rule is: ", RuleSum," The minimum support is ", 
-        Min_sup, ".The minimum confidence is ", Min_conf)
+message("The Number of Association Rule is: ", RuleSum)
 
 }
-system.time(AprioriAlgorithm(DataBase,Min_sup=0.2,Min_conf = 0.6))
+system.time(AprioriAlgorithm(DataBase,Min_sup=0.9,Min_conf = 0.5))
+system.time(AprioriAlgorithm(DataBase,Min_sup=0.4,Min_conf = 0.7))
+
+################################################################################
+
 
